@@ -5,6 +5,7 @@
   "type": "module",
   "main": "index.ts",
   "dependencies": {
+    "@clack/prompts": "^0.9.1",
     "@sinclair/typebox": "^0.34.0"
   }
 }
