@@ -9,7 +9,7 @@
       "apiUrl": {
         "type": "string",
         "description": "Override the default LobsterSight agent API base URL. Only needed for self-hosted instances.",
-        "default": "https://tkaqtttawnzvivnqytfh.supabase.co/functions/v1/agent-api"
+        "default": "https://www.lobstersight.com/agent-api"
       },
       "apiKey": {
         "type": "string",

@@ -28,7 +28,7 @@ type PluginApi = {
   on: (hookName: string, handler: (...args: unknown[]) => unknown, opts?: { priority?: number }) => void;
 };
 
-const DEFAULT_API_URL = "https://tkaqtttawnzvivnqytfh.supabase.co/functions/v1/agent-api";
+const DEFAULT_API_URL = "https://www.lobstersight.com/agent-api";
 
 export default function register(api: PluginApi) {
   // Always register the CLI setup command, even without an API key

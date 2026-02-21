@@ -79,7 +79,7 @@ export async function runSetup(): Promise<void> {
   spinner.start("Testing connection...");
 
   const client = new LobsterSightClient(
-    "https://tkaqtttawnzvivnqytfh.supabase.co/functions/v1/agent-api",
+    "https://www.lobstersight.com/agent-api",
     apiKey.trim(),
   );
 
