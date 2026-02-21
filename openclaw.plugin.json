@@ -8,7 +8,8 @@
     "properties": {
       "apiUrl": {
         "type": "string",
-        "description": "LobsterSight agent API base URL (e.g. https://your-project.supabase.co/functions/v1/agent-api)"
+        "description": "Override the default LobsterSight agent API base URL. Only needed for self-hosted instances.",
+        "default": "https://tkaqtttawnzvivnqytfh.supabase.co/functions/v1/agent-api"
       },
       "apiKey": {
         "type": "string",
@@ -31,13 +32,13 @@
         "description": "Project UUID for the agent's own tasks. The agent acts autonomously on tasks in this project. Tasks in other projects belong to the user and require explicit instructions."
       }
     },
-    "required": ["apiUrl", "apiKey"]
+    "required": ["apiKey"]
   },
   "uiHints": {
     "apiUrl": {
       "label": "API URL",
-      "help": "Base URL for the LobsterSight agent API endpoint",
-      "placeholder": "https://your-project.supabase.co/functions/v1/agent-api"
+      "help": "Override for self-hosted instances. Uses the default LobsterSight API if not set.",
+      "advanced": true
     },
     "apiKey": {
       "label": "API Key",
