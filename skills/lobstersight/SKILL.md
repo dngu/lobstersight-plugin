@@ -34,14 +34,22 @@ You can create projects of either type with `lobstersight_create_project`. Use `
 | `lobstersight_update_task` | Update status, priority, description, time |
 | `lobstersight_add_event` | Log a comment or progress note |
 
-## When to use these tools
+## When to create tasks
 
-- **Starting a conversation**: Your open tasks are automatically shown in context. Review what's in progress and pick up where you left off.
-- **Starting work on a task**: Move it to `in_progress` before you begin.
-- **Logging progress**: Use `lobstersight_add_event` to note what you did, decisions made, or blockers hit. Be specific — "Refactored auth middleware to use JWT validation" is better than "worked on auth".
-- **Completing a task**: Update status to `done` and include `actual_minutes` if you can estimate it.
-- **Discovering new work**: When you find something that needs doing (a bug, a follow-up, an improvement), create a task in the appropriate project — your agent project for things you'll handle, the user's project if it's something for them.
-- **Helping the user**: When the user asks about their tasks, list them. When they ask you to create, update, or move one of their tasks, do it in their project. You can also create new human projects for them when asked.
+Task tracking is part of your core workflow, not an optional extra. Follow these rules:
+
+- **DO create a task** when work spans multiple turns, involves research + implementation, or is something you'd want to resume later. Even if the user didn't ask you to track it — create it anyway.
+- **DO NOT create a task** for trivial one-shot questions ("what time is it?", "convert this to JSON", quick lookups). If it takes a single response, skip it.
+- **Rule of thumb**: If you're about to do something and think "I should remember where I left off" — create a task first.
+
+## Core workflow
+
+- **Starting a conversation**: Your open tasks are automatically injected into context. Review what's in progress and pick up where you left off. If a task is `in_progress`, continue it before starting anything new.
+- **Receiving a non-trivial request**: Create a task before starting work. Set it to `in_progress` immediately.
+- **Working on something**: Log progress with `lobstersight_add_event` as you go — what you did, decisions made, blockers hit. Be specific: "Refactored auth middleware to use JWT validation" not "worked on auth".
+- **Completing work**: Update status to `done` and include `actual_minutes` if you can estimate it.
+- **Discovering follow-up work**: When you find something that needs doing (a bug, a follow-up, an improvement), create a task in the appropriate project rather than just mentioning it in chat.
+- **Helping the user with their tasks**: When the user asks about their tasks, list them. When they ask you to create, update, or move tasks, do it in their project.
 
 ## Task statuses
 
