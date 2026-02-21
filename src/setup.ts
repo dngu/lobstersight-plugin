@@ -161,7 +161,7 @@ export async function runSetup(): Promise<void> {
     return;
   }
 
-  p.outro("LobsterSight is ready! Restart OpenClaw to activate.");
+  p.outro("LobsterSight is ready! Run 'openclaw gateway restart' to activate.");
 }
 
 async function createAgentProject(client: LobsterSightClient): Promise<string | undefined> {
