@@ -40,6 +40,14 @@ function setPluginConfig(
     config: pluginCfg,
   };
   plugins.entries = entries;
+
+  // Ensure lobstersight is in the allow list so its tools are trusted
+  const allow = Array.isArray(plugins.allow) ? [...plugins.allow] : [];
+  if (!allow.includes("lobstersight")) {
+    allow.push("lobstersight");
+  }
+  plugins.allow = allow;
+
   return { ...config, plugins };
 }
 
