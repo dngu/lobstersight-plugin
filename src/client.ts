@@ -107,6 +107,11 @@ export type CreateProjectParams = {
   actor_type?: "human" | "agent";
 };
 
+// Supabase anon key — a public JWT that satisfies Supabase's API gateway.
+// The actual auth is handled by the edge function via the x-api-key header.
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrYXF0dHRhd256dml2bnF5dGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NzU0MTIsImV4cCI6MjA4NzI1MTQxMn0.T-gZnwPonTYgR-YO273m2w_e6fTqbDXknxl_O-lxP5I";
+
 export class LobsterSightClient {
   private baseUrl: string;
   private apiKey: string;
@@ -120,7 +125,8 @@ export class LobsterSightClient {
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "x-api-key": this.apiKey,
       "Content-Type": "application/json",
     };
 
