@@ -1,0 +1,61 @@
+{
+  "id": "lobstersight",
+  "name": "LobsterSight",
+  "description": "Task tracking integration with LobsterSight. Lets the agent manage tasks, track progress, and report status to users via a real-time dashboard.",
+  "skills": ["./skills"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiUrl": {
+        "type": "string",
+        "description": "LobsterSight agent API base URL (e.g. https://your-project.supabase.co/functions/v1/agent-api)"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "LobsterSight API key (starts with ls_)"
+      },
+      "injectOpenTasks": {
+        "type": "boolean",
+        "description": "Inject open tasks into agent context before each run",
+        "default": true
+      },
+      "maxInjectedTasks": {
+        "type": "number",
+        "description": "Maximum number of open tasks to inject into context",
+        "default": 20,
+        "minimum": 1,
+        "maximum": 100
+      },
+      "agentProjectId": {
+        "type": "string",
+        "description": "Project UUID for the agent's own tasks. The agent acts autonomously on tasks in this project. Tasks in other projects belong to the user and require explicit instructions."
+      }
+    },
+    "required": ["apiUrl", "apiKey"]
+  },
+  "uiHints": {
+    "apiUrl": {
+      "label": "API URL",
+      "help": "Base URL for the LobsterSight agent API endpoint",
+      "placeholder": "https://your-project.supabase.co/functions/v1/agent-api"
+    },
+    "apiKey": {
+      "label": "API Key",
+      "help": "Bearer token for agent authentication (starts with ls_)",
+      "sensitive": true
+    },
+    "injectOpenTasks": {
+      "label": "Inject Open Tasks",
+      "help": "Automatically show open tasks in the agent's context each conversation"
+    },
+    "maxInjectedTasks": {
+      "label": "Max Injected Tasks",
+      "help": "Limit how many open tasks are shown in context",
+      "advanced": true
+    },
+    "agentProjectId": {
+      "label": "Agent Project",
+      "help": "The project UUID the agent owns. It can freely act on tasks here. For all other projects, it only acts when asked."
+    }
+  }
+}
