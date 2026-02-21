@@ -7,6 +7,7 @@ import {
   createUpdateTaskTool,
   createAddEventTool,
   createListProjectsTool,
+  createCreateProjectTool,
 } from "./src/tools.js";
 
 type PluginApi = {
@@ -44,6 +45,7 @@ export default function register(api: PluginApi) {
   // Register agent tools
   const tools = [
     createListProjectsTool(client),
+    createCreateProjectTool(client),
     createListTasksTool(client),
     createGetTaskTool(client),
     createCreateTaskTool(client),

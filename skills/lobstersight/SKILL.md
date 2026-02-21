@@ -1,6 +1,6 @@
 ---
 name: lobstersight
-description: Track and manage tasks via LobsterSight. View open work, create tasks, update progress, and log activity on the shared task board.
+description: Track and manage tasks via LobsterSight. View open work, create tasks and projects, update progress, and log activity on the shared task board.
 metadata:
   openclaw:
     emoji: "\U0001F99E"
@@ -13,20 +13,21 @@ disable-model-invocation: false
 
 You have access to a shared LobsterSight task board with the `lobstersight_*` tools.
 
-## Project ownership
+## Projects and ownership
 
-Tasks are organized into projects. Each project belongs to either the **agent** or the **human user**.
+Tasks are organized into projects. Each project has an `actor_type`:
 
-- **Agent project**: Your tasks. You own these and should proactively pick them up, track progress, and mark them done. When you create tasks for yourself, always assign them to your agent project.
-- **User projects**: The user's personal tasks. You can see them for context, but **only create, update, or modify tasks in user projects when the user explicitly asks you to**. Never proactively change a user's tasks.
+- **`agent` projects**: Your work. You proactively pick up tasks, track progress, and mark them done. When you create tasks for yourself, put them in an agent project.
+- **`human` projects**: The user's personal task lists. These are **not your work queue** — they're the user's own items. You can create human projects and tasks in them when the user asks, but never proactively act on tasks in human projects.
 
-Use `lobstersight_list_projects` to discover which projects exist and who owns them (check the `actor_type` field).
+You can create projects of either type with `lobstersight_create_project`. Use `lobstersight_list_projects` to discover existing projects and their ownership.
 
 ## Tools
 
 | Tool | Purpose |
 |------|---------|
 | `lobstersight_list_projects` | Discover projects and their ownership |
+| `lobstersight_create_project` | Create a new project (agent or human) |
 | `lobstersight_list_tasks` | List tasks with filters (status, project, open) |
 | `lobstersight_get_task` | Get full task details by ID |
 | `lobstersight_create_task` | Create a new task |
@@ -40,7 +41,7 @@ Use `lobstersight_list_projects` to discover which projects exist and who owns t
 - **Logging progress**: Use `lobstersight_add_event` to note what you did, decisions made, or blockers hit. Be specific — "Refactored auth middleware to use JWT validation" is better than "worked on auth".
 - **Completing a task**: Update status to `done` and include `actual_minutes` if you can estimate it.
 - **Discovering new work**: When you find something that needs doing (a bug, a follow-up, an improvement), create a task in the appropriate project — your agent project for things you'll handle, the user's project if it's something for them.
-- **Helping the user**: When the user asks about their tasks, list them. When they ask you to create, update, or move one of their tasks, do it in their project.
+- **Helping the user**: When the user asks about their tasks, list them. When they ask you to create, update, or move one of their tasks, do it in their project. You can also create new human projects for them when asked.
 
 ## Task statuses
 
@@ -73,7 +74,7 @@ You can break a large task into subtasks using `parent_id` when creating a task.
 - Log progress events with meaningful context, not just "working on it"
 - When you finish a task, mark it `done` and note what was accomplished
 - If you discover a blocker, log it as an event with `event_type: "blocker"`
-- When creating tasks for yourself, always use the agent project ID
-- When creating tasks for the user, always use their project ID
-- Don't touch user tasks unless asked
+- When creating tasks for yourself, always use an agent project
+- When creating tasks for the user, always use a human project
+- Only proactively work on tasks in agent projects — never act on human project tasks unless asked
 - Never nest subtasks more than one level deep (no sub-sub-tasks)

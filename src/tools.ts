@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import type { LobsterSightClient, Project } from "./client.js";
+import type { LobsterSightClient } from "./client.js";
 
 const PRIORITY_LABELS: Record<number, string> = {
   0: "None",
@@ -294,6 +294,48 @@ export function createListProjectsTool(client: LobsterSightClient) {
       }
 
       return text(lines.join("\n"));
+    },
+  };
+}
+
+export function createCreateProjectTool(client: LobsterSightClient) {
+  return {
+    name: "lobstersight_create_project",
+    label: "LobsterSight: Create Project",
+    description:
+      "Create a new project in LobsterSight. Projects group related tasks together. Set actor_type to 'agent' for your own projects or 'human' for the user's projects (only when asked).",
+    parameters: Type.Object({
+      name: Type.String({ description: "Project name (required)" }),
+      description: Type.Optional(Type.String({ description: "Project description" })),
+      color: Type.Optional(Type.String({ description: "Hex color for the project (e.g. #3b82f6)" })),
+      actor_type: Type.Optional(
+        Type.Union([Type.Literal("human"), Type.Literal("agent")], {
+          description: "Owner type: 'agent' (default) for agent-owned projects, 'human' for user projects",
+        }),
+      ),
+    }),
+    async execute(_id: string, params: Record<string, unknown>) {
+      const name = params.name as string;
+      if (!name?.trim()) throw new Error("name is required");
+
+      const project = await client.createProject({
+        name: name.trim(),
+        description: params.description as string | undefined,
+        color: params.color as string | undefined,
+        actor_type: (params.actor_type as "human" | "agent") || "agent",
+      });
+
+      const owner = project.actor_type === "agent" ? "[Agent]" : "[Human]";
+      return text(
+        [
+          `Project created successfully.`,
+          `${owner} ${project.name}`,
+          `ID: ${project.id}`,
+          project.description ? `Description: ${project.description}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
     },
   };
 }

@@ -100,6 +100,13 @@ export type ListProjectsParams = {
   actor_type?: "human" | "agent";
 };
 
+export type CreateProjectParams = {
+  name: string;
+  description?: string;
+  color?: string;
+  actor_type?: "human" | "agent";
+};
+
 export class LobsterSightClient {
   private baseUrl: string;
   private apiKey: string;
@@ -168,5 +175,9 @@ export class LobsterSightClient {
     if (params?.actor_type) qs.set("actor_type", params.actor_type);
     const query = qs.toString();
     return this.request<Project[]>("GET", `/projects${query ? `?${query}` : ""}`);
+  }
+
+  async createProject(params: CreateProjectParams): Promise<Project> {
+    return this.request<Project>("POST", "/projects", params);
   }
 }
