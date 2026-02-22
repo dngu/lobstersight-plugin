@@ -20,7 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function formatTask(t: { id: string; title: string; status: string; priority: number; description?: string | null; project_id?: string | null; due_date?: string | null; created_at: string }): string {
   const parts = [
-    `[${t.id.slice(0, 8)}] ${t.title}`,
+    `[${t.id}] ${t.title}`,
     `  Status: ${STATUS_LABELS[t.status] ?? t.status} | Priority: ${PRIORITY_LABELS[t.priority] ?? t.priority}`,
   ];
   if (t.description) parts.push(`  Description: ${t.description}`);
@@ -263,7 +263,7 @@ export function createAddEventTool(client: LobsterSightClient) {
         metadata: params.metadata as Record<string, unknown> | undefined,
       });
 
-      return text(`Event logged on task ${taskId.slice(0, 8)}:\n  Type: ${event.event_type}\n  Content: ${event.content}`);
+      return text(`Event logged on task ${taskId}:\n  Type: ${event.event_type}\n  Content: ${event.content}`);
     },
   };
 }
