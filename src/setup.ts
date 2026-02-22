@@ -48,7 +48,15 @@ function setPluginConfig(
   }
   plugins.allow = allow;
 
-  return { ...config, plugins };
+  // Ensure group:plugins is in tools.allow so optional plugin tools are available
+  const tools = { ...((config.tools ?? {}) as Record<string, unknown>) };
+  const toolsAllow = Array.isArray(tools.allow) ? [...tools.allow] : [];
+  if (!toolsAllow.includes("group:plugins")) {
+    toolsAllow.push("group:plugins");
+  }
+  tools.allow = toolsAllow;
+
+  return { ...config, plugins, tools };
 }
 
 export async function runSetup(): Promise<void> {
