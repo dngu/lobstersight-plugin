@@ -60,6 +60,7 @@ Task tracking is part of your core workflow, not an optional extra. Follow these
 | `in_progress` | Currently being worked on |
 | `done` | Completed |
 | `canceled` | No longer needed |
+| `blocked` | Waiting on user action — cannot proceed until unblocked |
 
 ## Priorities
 
@@ -74,6 +75,29 @@ Task tracking is part of your core workflow, not an optional extra. Follow these
 ## Subtasks
 
 You can break a large task into subtasks using `parent_id` when creating a task. However, **subtasks must only be one level deep**. Never create a subtask of a subtask. If a task already has a `parent_id`, it is a subtask — do not use it as a parent for another task. Keep the hierarchy flat: top-level tasks and their direct subtasks, nothing deeper.
+
+## Blocked tasks
+
+### Blocking a task (agent → user)
+
+When you hit a blocker that requires user action (e.g. missing credentials, unclear requirements, a decision only the user can make):
+
+1. Use `lobstersight_update_task` to set `status: "blocked"` with `_block_reason` explaining what you need from the user
+2. Tell the user in chat what you're blocked on so they know to respond
+3. The task board will show blocked tasks prominently
+
+### Unblocking a task (user → agent)
+
+Blocked tasks can be resolved in two ways:
+
+- **Via LobsterSight UI**: The user clicks "Unblock" in the web UI — the task returns to `in_progress`
+- **Via direct reply to the bot**: When the user replies in chat with information that resolves a blocked task:
+  1. Recognize the reply addresses a blocked task's issue
+  2. Add an event comment on the task with the user's response (via `lobstersight_add_event`)
+  3. Update the task status from `blocked` back to `in_progress` (via `lobstersight_update_task`)
+  4. Continue working on the task using the information provided
+
+If the task board shows blocked tasks at prompt time, proactively check if the user's latest message resolves any of them.
 
 ## Best practices
 

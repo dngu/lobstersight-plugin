@@ -15,6 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_progress: "In Progress",
   done: "Done",
   canceled: "Canceled",
+  blocked: "Blocked",
 };
 
 function formatTask(t: { id: string; title: string; status: string; priority: number; description?: string | null; project_id?: string | null; due_date?: string | null; created_at: string }): string {
@@ -47,6 +48,7 @@ export function createListTasksTool(client: LobsterSightClient) {
           Type.Literal("in_progress"),
           Type.Literal("done"),
           Type.Literal("canceled"),
+          Type.Literal("blocked"),
         ], { description: "Filter by task status" }),
       ),
       project_id: Type.Optional(Type.String({ description: "Filter by project UUID" })),
@@ -131,6 +133,7 @@ export function createCreateTaskTool(client: LobsterSightClient) {
           Type.Literal("in_progress"),
           Type.Literal("done"),
           Type.Literal("canceled"),
+          Type.Literal("blocked"),
         ], { description: "Initial status (default: backlog)" }),
       ),
       priority: Type.Optional(
@@ -188,7 +191,11 @@ export function createUpdateTaskTool(client: LobsterSightClient) {
           Type.Literal("in_progress"),
           Type.Literal("done"),
           Type.Literal("canceled"),
+          Type.Literal("blocked"),
         ], { description: "New status" }),
+      ),
+      _block_reason: Type.Optional(
+        Type.String({ description: "Required when setting status to blocked. Explain what you need from the user." }),
       ),
       priority: Type.Optional(
         Type.Number({ description: "New priority: 0=None, 1=Low, 2=Medium, 3=High, 4=Urgent", minimum: 0, maximum: 4 }),
@@ -211,6 +218,7 @@ export function createUpdateTaskTool(client: LobsterSightClient) {
       if (params.due_date !== undefined) update.due_date = params.due_date || null;
       if (params.estimate_minutes !== undefined) update.estimate_minutes = params.estimate_minutes;
       if (params.metadata !== undefined) update.metadata = params.metadata;
+      if (params._block_reason !== undefined) update._block_reason = params._block_reason;
 
       if (Object.keys(update).length === 0) {
         return text("No fields to update. Provide at least one field to change.");

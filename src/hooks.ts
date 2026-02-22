@@ -6,6 +6,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_progress: "In Progress",
   done: "Done",
   canceled: "Canceled",
+  blocked: "Blocked",
 };
 
 const PRIORITY_LABELS: Record<number, string> = {
@@ -20,7 +21,7 @@ function formatTaskCompact(t: Task): string {
   const priority = PRIORITY_LABELS[t.priority] ?? String(t.priority);
   const status = STATUS_LABELS[t.status] ?? t.status;
   const due = t.due_date ? ` | Due: ${t.due_date}` : "";
-  return `- [${t.id.slice(0, 8)}] (${status}, ${priority}) ${t.title}${due}`;
+  return `- [${t.id}] (${status}, ${priority}) ${t.title}${due}`;
 }
 
 function renderTaskGroup(label: string, tasks: Task[]): string[] {
@@ -88,6 +89,9 @@ export function registerHooks(
               ...renderTaskGroup("In Progress", agentTasks.filter((t) => t.status === "in_progress")),
             );
             sections.push(
+              ...renderTaskGroup("Blocked", agentTasks.filter((t) => t.status === "blocked")),
+            );
+            sections.push(
               ...renderTaskGroup("To Do", agentTasks.filter((t) => t.status === "todo")),
             );
             sections.push(
@@ -113,6 +117,9 @@ export function registerHooks(
           // No agentProjectId configured — show all tasks without ownership split
           sections.push(
             ...renderTaskGroup("In Progress", tasks.filter((t) => t.status === "in_progress")),
+          );
+          sections.push(
+            ...renderTaskGroup("Blocked", tasks.filter((t) => t.status === "blocked")),
           );
           sections.push(
             ...renderTaskGroup("To Do", tasks.filter((t) => t.status === "todo")),

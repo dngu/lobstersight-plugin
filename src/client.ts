@@ -2,7 +2,7 @@
  * HTTP client for the LobsterSight agent API.
  */
 
-export type TaskStatus = "backlog" | "todo" | "in_progress" | "done" | "canceled";
+export type TaskStatus = "backlog" | "todo" | "in_progress" | "done" | "canceled" | "blocked";
 
 export type Task = {
   id: string;
@@ -66,6 +66,7 @@ export type UpdateTaskParams = {
   actual_minutes?: number | null;
   metadata?: Record<string, unknown>;
   _event_metadata?: Record<string, unknown>;
+  _block_reason?: string;
 };
 
 export type ListTasksParams = {
