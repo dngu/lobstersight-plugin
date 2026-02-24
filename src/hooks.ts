@@ -172,11 +172,11 @@ export function registerHooks(
           const active = recurringTasks.filter((t) => t.recurrence_status === "active");
           const paused = recurringTasks.filter((t) => t.recurrence_status === "paused");
 
-          sections.push("### Cron Jobs (managed schedules — do NOT duplicate as regular tasks)");
+          sections.push("### Cron Jobs (do NOT create regular tasks about these — use cron tools directly)");
           sections.push(
             `${recurringTasks.length} cron job(s): ${active.length} active, ${failing.length} failing, ${paused.length} paused.`,
           );
-          sections.push("Use `lobstersight_report_recurrence_run` to report run results. Use `lobstersight_update_recurrence` to pause/resume.");
+          sections.push("Work on cron jobs directly. Report results with `lobstersight_report_recurrence_run`. Manage with `lobstersight_update_recurrence`. Never create a regular task to fix, monitor, or track a cron job.");
           sections.push("");
 
           if (failing.length > 0) {

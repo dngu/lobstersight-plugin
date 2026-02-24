@@ -155,7 +155,7 @@ export function createCreateTaskTool(client: LobsterSightClient) {
     name: "lobstersight_create_task",
     label: "LobsterSight: Create Task",
     description:
-      "Create a new task in LobsterSight. Specify a title and optionally a description, status, priority, project, due date, and time estimate. Include a recurrence_rule to create a cron job instead of a one-off task.",
+      "Create a new one-off task in LobsterSight. For scheduled/recurring work, use lobstersight_create_cron_job instead. Do NOT use this tool to create tasks about existing cron jobs (e.g. 'Fix ...', 'Monitor ...').",
     parameters: Type.Object({
       title: Type.String({ description: "Task title (required)" }),
       description: Type.Optional(Type.String({ description: "Detailed description of the task" })),
@@ -177,24 +177,6 @@ export function createCreateTaskTool(client: LobsterSightClient) {
       due_date: Type.Optional(Type.String({ description: "Due date (YYYY-MM-DD)" })),
       estimate_minutes: Type.Optional(Type.Number({ description: "Estimated time in minutes", minimum: 0 })),
       metadata: Type.Optional(Type.Unknown({ description: "Arbitrary key-value metadata" })),
-      recurrence_rule: Type.Optional(
-        Type.Object({
-          frequency: Type.Union([
-            Type.Literal("daily"),
-            Type.Literal("weekly"),
-            Type.Literal("monthly"),
-            Type.Literal("yearly"),
-          ], { description: "How often the task repeats" }),
-          interval: Type.Number({ description: "Repeat every N periods (e.g. 2 = every 2 weeks)", minimum: 1 }),
-          time_of_day: Type.Optional(Type.String({ description: "Time of day in HH:mm 24h format (e.g. '09:00')" })),
-          timezone: Type.Optional(Type.String({ description: "IANA timezone (e.g. 'America/New_York')" })),
-          days_of_week: Type.Optional(Type.Array(Type.Number({ minimum: 0, maximum: 6 }), { description: "Days of week: 0=Sun, 1=Mon, ..., 6=Sat" })),
-          day_of_month: Type.Optional(Type.Number({ description: "Day of the month (1-31)", minimum: 1, maximum: 31 })),
-          end_date: Type.Optional(Type.String({ description: "ISO date when recurrence stops" })),
-          count: Type.Optional(Type.Number({ description: "Total number of occurrences before stopping", minimum: 1 })),
-        }, { description: "Cron schedule. Include this to make the task a cron job." }),
-      ),
-      next_run_at: Type.Optional(Type.String({ description: "ISO timestamp for the first/next scheduled run" })),
     }),
     async execute(_id: string, params: Record<string, unknown>) {
       const title = params.title as string;
@@ -210,22 +192,77 @@ export function createCreateTaskTool(client: LobsterSightClient) {
         due_date: params.due_date as string | undefined,
         estimate_minutes: params.estimate_minutes as number | undefined,
         metadata: params.metadata as Record<string, unknown> | undefined,
-        recurrence_rule: params.recurrence_rule as RecurrenceRule | undefined,
+      });
+
+      return text(
+        [
+          `Task created successfully.`,
+          `ID: ${task.id}`,
+          `Title: ${task.title}`,
+          `Status: ${STATUS_LABELS[task.status] ?? task.status}`,
+          `Priority: ${PRIORITY_LABELS[task.priority] ?? task.priority}`,
+        ].join("\n"),
+      );
+    },
+  };
+}
+
+export function createCreateCronJobTool(client: LobsterSightClient) {
+  return {
+    name: "lobstersight_create_cron_job",
+    label: "LobsterSight: Create Cron Job",
+    description:
+      "Create a new cron job (recurring scheduled task) in LobsterSight. Only use this to set up a NEW scheduled job — never to track, fix, or monitor an existing one.",
+    parameters: Type.Object({
+      title: Type.String({ description: "Cron job title (required)" }),
+      description: Type.Optional(Type.String({ description: "What this cron job does when it runs" })),
+      project_id: Type.Optional(Type.String({ description: "Project UUID to assign this cron job to" })),
+      priority: Type.Optional(
+        Type.Number({ description: "Priority: 0=None, 1=Low, 2=Medium, 3=High, 4=Urgent", minimum: 0, maximum: 4 }),
+      ),
+      recurrence_rule: Type.Object({
+        frequency: Type.Union([
+          Type.Literal("daily"),
+          Type.Literal("weekly"),
+          Type.Literal("monthly"),
+          Type.Literal("yearly"),
+        ], { description: "How often the job runs" }),
+        interval: Type.Number({ description: "Run every N periods (e.g. 2 = every 2 weeks)", minimum: 1 }),
+        time_of_day: Type.Optional(Type.String({ description: "Time of day in HH:mm 24h format (e.g. '09:00')" })),
+        timezone: Type.Optional(Type.String({ description: "IANA timezone (e.g. 'America/New_York')" })),
+        days_of_week: Type.Optional(Type.Array(Type.Number({ minimum: 0, maximum: 6 }), { description: "Days of week: 0=Sun, 1=Mon, ..., 6=Sat" })),
+        day_of_month: Type.Optional(Type.Number({ description: "Day of the month (1-31)", minimum: 1, maximum: 31 })),
+        end_date: Type.Optional(Type.String({ description: "ISO date when the job stops recurring" })),
+        count: Type.Optional(Type.Number({ description: "Total number of runs before stopping", minimum: 1 })),
+      }, { description: "The cron schedule (required)" }),
+      next_run_at: Type.Optional(Type.String({ description: "ISO timestamp for the first scheduled run" })),
+      metadata: Type.Optional(Type.Unknown({ description: "Arbitrary key-value metadata" })),
+    }),
+    async execute(_id: string, params: Record<string, unknown>) {
+      const title = params.title as string;
+      if (!title?.trim()) throw new Error("title is required");
+
+      const recurrenceRule = params.recurrence_rule as RecurrenceRule;
+      if (!recurrenceRule) throw new Error("recurrence_rule is required for cron jobs");
+
+      const task = await client.createTask({
+        title: title.trim(),
+        description: params.description as string | undefined,
+        priority: params.priority as number | undefined,
+        project_id: params.project_id as string | undefined,
+        metadata: params.metadata as Record<string, unknown> | undefined,
+        recurrence_rule: recurrenceRule,
         next_run_at: params.next_run_at as string | undefined,
       });
 
       const parts = [
-        `Task created successfully.`,
+        `Cron job created successfully.`,
         `ID: ${task.id}`,
         `Title: ${task.title}`,
-        `Status: ${STATUS_LABELS[task.status] ?? task.status}`,
-        `Priority: ${PRIORITY_LABELS[task.priority] ?? task.priority}`,
+        `Cron Schedule: ${formatRecurrenceSummary(task.recurrence_rule!)}`,
+        `Cron Status: ${RECURRENCE_STATUS_LABELS[task.recurrence_status!] ?? task.recurrence_status}`,
       ];
-      if (task.recurrence_rule) {
-        parts.push(`Cron Schedule: ${formatRecurrenceSummary(task.recurrence_rule)}`);
-        parts.push(`Cron Status: ${RECURRENCE_STATUS_LABELS[task.recurrence_status!] ?? task.recurrence_status}`);
-        if (task.next_run_at) parts.push(`Next Run: ${task.next_run_at}`);
-      }
+      if (task.next_run_at) parts.push(`Next Run: ${task.next_run_at}`);
 
       return text(parts.join("\n"));
     },
