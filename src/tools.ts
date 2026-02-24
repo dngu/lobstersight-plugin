@@ -155,7 +155,7 @@ export function createCreateTaskTool(client: LobsterSightClient) {
     name: "lobstersight_create_task",
     label: "LobsterSight: Create Task",
     description:
-      "Create a new one-off task in LobsterSight. For scheduled/recurring work, use lobstersight_create_cron_job instead. Do NOT use this tool to create tasks about existing cron jobs (e.g. 'Fix ...', 'Monitor ...').",
+      "Create a new one-off, NON-recurring task in LobsterSight. For anything recurring, repeating, scheduled, or periodic, ALWAYS use lobstersight_create_recurring_task instead. Do NOT use this tool for recurring work or to create tasks about existing cron jobs.",
     parameters: Type.Object({
       title: Type.String({ description: "Task title (required)" }),
       description: Type.Optional(Type.String({ description: "Detailed description of the task" })),
@@ -207,12 +207,12 @@ export function createCreateTaskTool(client: LobsterSightClient) {
   };
 }
 
-export function createCreateCronJobTool(client: LobsterSightClient) {
+export function createCreateRecurringTaskTool(client: LobsterSightClient) {
   return {
-    name: "lobstersight_create_cron_job",
-    label: "LobsterSight: Create Cron Job",
+    name: "lobstersight_create_recurring_task",
+    label: "LobsterSight: Create Recurring Task",
     description:
-      "Create a new cron job (recurring scheduled task) in LobsterSight. Only use this to set up a NEW scheduled job — never to track, fix, or monitor an existing one.",
+      "Create a new recurring task (cron job) in LobsterSight. Use this whenever the user asks for work that repeats, recurs, or runs on a schedule (daily, weekly, monthly, etc.). Only use this to set up a NEW recurring task — never to track, fix, or monitor an existing one.",
     parameters: Type.Object({
       title: Type.String({ description: "Cron job title (required)" }),
       description: Type.Optional(Type.String({ description: "What this cron job does when it runs" })),

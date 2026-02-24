@@ -13,6 +13,15 @@ disable-model-invocation: false
 
 You have access to a shared LobsterSight task board with the `lobstersight_*` tools.
 
+## ROUTING: Recurring vs one-off
+
+**Before creating any task, decide:** does this work repeat on a schedule?
+
+- **Recurring** (repeating, periodic, scheduled, "every day/week/month", daily, weekly, monthly, yearly) → **ALWAYS** use `lobstersight_create_recurring_task`. Never `lobstersight_create_task`.
+- **One-off** (single piece of work, no schedule) → use `lobstersight_create_task`.
+
+If the user says "recurring task", "repeating task", "scheduled task", or anything with a cadence — that's `lobstersight_create_recurring_task`.
+
 ## Projects and ownership
 
 Tasks are organized into projects. Each project has an `actor_type`:
@@ -30,8 +39,8 @@ You can create projects of either type with `lobstersight_create_project`. Use `
 | `lobstersight_create_project` | Create a new project (agent or human) |
 | `lobstersight_list_tasks` | List tasks with filters (status, project, open) |
 | `lobstersight_get_task` | Get full task details by ID |
-| `lobstersight_create_task` | Create a one-off task (NOT for cron jobs) |
-| `lobstersight_create_cron_job` | Create a new cron job with a schedule |
+| `lobstersight_create_task` | Create a one-off, non-recurring task |
+| `lobstersight_create_recurring_task` | Create a new recurring task (cron job) with a schedule |
 | `lobstersight_update_task` | Update status, priority, description, time |
 | `lobstersight_add_event` | Log a comment or progress note |
 | `lobstersight_list_recurring_tasks` | List cron jobs with schedule info |
@@ -137,7 +146,7 @@ The cron job's run history IS the tracking. There is no need for a separate task
 
 ### Creating a cron job
 
-Only create a cron job when the user asks you to set up a **new** scheduled job. Use `lobstersight_create_cron_job` (NOT `lobstersight_create_task`) and put it in the **agent project** if it's work the agent will execute. The `recurrence_rule` is required:
+Create a recurring task whenever the user asks for work that repeats on a schedule — "recurring task", "repeating task", "every Monday", "daily check", etc. Use `lobstersight_create_recurring_task` (NOT `lobstersight_create_task`) and put it in the **agent project** if it's work the agent will execute. The `recurrence_rule` is required:
 
 ```
 recurrence_rule: {
@@ -179,7 +188,7 @@ Use `lobstersight_update_recurrence` to:
 - **At conversation start**: Check injected context for cron jobs. If a job is `failing`, investigate and fix it directly — do NOT create a "Fix ..." task. If a job is overdue (`next_run_at` is in the past), execute it. Always report results with `lobstersight_report_recurrence_run`.
 - **When asked to "sync", "run", or "catch up" cron jobs**: List them with `lobstersight_list_recurring_tasks`, execute the work, and report results with `lobstersight_report_recurrence_run`. Do **not** create regular tasks.
 - **When a cron job is failing**: Investigate the error, fix the issue, re-run the job, and report with `lobstersight_report_recurrence_run`. Do NOT create a task like "Fix [job name]" or "Investigate [job name] failure". Work on it directly.
-- **When asked to set up a new cron job**: Create it with `lobstersight_create_cron_job`. Use the agent project for agent work.
+- **When asked to set up a new recurring/repeating/scheduled task**: Create it with `lobstersight_create_recurring_task`. Use the agent project for agent work.
 - **On failure**: Report with `outcome: "failure"` and a clear `error` message. The user sees this in the UI.
 
 ## Best practices
