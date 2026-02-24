@@ -8,6 +8,9 @@ import {
   createAddEventTool,
   createListProjectsTool,
   createCreateProjectTool,
+  createListRecurringTasksTool,
+  createReportRecurrenceRunTool,
+  createUpdateRecurrenceTool,
 } from "./src/tools.js";
 
 type PluginApi = {
@@ -77,6 +80,9 @@ export default function register(api: PluginApi) {
     createCreateTaskTool(client),
     createUpdateTaskTool(client),
     createAddEventTool(client),
+    createListRecurringTasksTool(client),
+    createReportRecurrenceRunTool(client),
+    createUpdateRecurrenceTool(client),
   ];
 
   for (const tool of tools) {

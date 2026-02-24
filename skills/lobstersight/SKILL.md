@@ -1,6 +1,6 @@
 ---
 name: lobstersight
-description: Track and manage tasks via LobsterSight. View open work, create tasks and projects, update progress, and log activity on the shared task board.
+description: Track and manage tasks via LobsterSight. View open work, create tasks and projects, update progress, log activity, and manage cron jobs.
 metadata:
   openclaw:
     emoji: "\U0001F99E"
@@ -30,9 +30,12 @@ You can create projects of either type with `lobstersight_create_project`. Use `
 | `lobstersight_create_project` | Create a new project (agent or human) |
 | `lobstersight_list_tasks` | List tasks with filters (status, project, open) |
 | `lobstersight_get_task` | Get full task details by ID |
-| `lobstersight_create_task` | Create a new task |
+| `lobstersight_create_task` | Create a new task (one-off or cron job) |
 | `lobstersight_update_task` | Update status, priority, description, time |
 | `lobstersight_add_event` | Log a comment or progress note |
+| `lobstersight_list_recurring_tasks` | List cron jobs with schedule info |
+| `lobstersight_report_recurrence_run` | Report the result of a cron job execution |
+| `lobstersight_update_recurrence` | Pause, resume, or reschedule a cron job |
 
 ## When to create tasks
 
@@ -40,6 +43,7 @@ Task tracking is part of your core workflow, not an optional extra. Follow these
 
 - **DO create a task** when work spans multiple turns, involves research + implementation, or is something you'd want to resume later. Even if the user didn't ask you to track it — create it anyway.
 - **DO NOT create a task** for trivial one-shot questions ("what time is it?", "convert this to JSON", quick lookups). If it takes a single response, skip it.
+- **DO NOT create a regular task** to track execution of a cron job. Cron jobs have their own run-reporting system (`lobstersight_report_recurrence_run`). Creating a regular task for a cron run is **always wrong**.
 - **Rule of thumb**: If you're about to do something and think "I should remember where I left off" — create a task first.
 
 ## Core workflow
@@ -99,6 +103,75 @@ Blocked tasks can be resolved in two ways:
 
 If the task board shows blocked tasks at prompt time, proactively check if the user's latest message resolves any of them.
 
+## Cron jobs
+
+Cron jobs are **their own thing** — they have a built-in schedule, run history, and dedicated tools. They are NOT regular tasks. They appear in your injected context under "Cron Jobs" with their schedule and next run time.
+
+### CRITICAL: Do not duplicate cron jobs as regular tasks
+
+**NEVER** create a regular task to track, mirror, or represent a cron job. Cron jobs already exist in LobsterSight with their own schedule and run history. When the user asks you to work with, execute, sync, or manage cron jobs:
+
+1. Use `lobstersight_list_recurring_tasks` to see them
+2. Do the work the cron job describes
+3. Use `lobstersight_report_recurrence_run` to report the outcome
+4. Use `lobstersight_update_recurrence` to pause/resume/reschedule
+
+That's it. Do not call `lobstersight_create_task` to create a separate task for each cron job. Do not create subtasks under them for individual runs. The run-reporting system handles execution tracking.
+
+### Cron statuses
+
+| Status | Meaning |
+|--------|---------|
+| `active` | Running on schedule |
+| `paused` | Temporarily stopped — won't execute until resumed |
+| `failing` | Last run failed — needs attention |
+
+### Creating a cron job
+
+Only create a cron job when the user asks you to set up a **new** scheduled job. Use `lobstersight_create_task` with a `recurrence_rule` object and put it in the **agent project** (if it's work the agent will execute) — cron jobs follow the same ownership rules as regular tasks:
+
+```
+recurrence_rule: {
+  frequency: "daily" | "weekly" | "monthly" | "yearly",
+  interval: 1,           // every N periods
+  time_of_day: "09:00",  // HH:mm 24h format (optional)
+  timezone: "America/New_York",  // IANA timezone (optional)
+  days_of_week: [1, 3, 5],      // 0=Sun..6=Sat (optional, for weekly)
+  day_of_month: 15,              // 1-31 (optional, for monthly)
+  end_date: "2026-12-31",       // when to stop (optional)
+  count: 10                      // total occurrences (optional)
+}
+```
+
+Set `next_run_at` to an ISO timestamp for the first scheduled run.
+
+### Executing and reporting
+
+When you execute a cron job (either because the user asked or because it's due), follow this flow:
+
+1. **Do the work** described in the cron job's title/description
+2. **Report the result** with `lobstersight_report_recurrence_run`:
+   - `outcome: "success"` — completed normally. If status was `failing`, it auto-resets to `active`.
+   - `outcome: "failure"` — something went wrong. Provide an `error` message. Status auto-sets to `failing`.
+   - `outcome: "skipped"` — intentionally skipped this run (e.g. preconditions not met).
+3. Include `duration_ms`, `content` (summary of what happened), and `next_run_at`
+
+**Do not** create a regular task, mark it done, or use any other task tracking for the execution. The run report IS the tracking.
+
+### Managing cron jobs
+
+Use `lobstersight_update_recurrence` to:
+- **Pause**: Set `recurrence_status: "paused"` to temporarily stop the schedule
+- **Resume**: Set `recurrence_status: "active"` to restart it
+- **Reschedule**: Set `next_run_at` to change when the next run happens
+
+### Cron job workflow
+
+- **At conversation start**: Check injected context for cron jobs. Pay attention to `failing` jobs — investigate and fix them. If a job is due or overdue (`next_run_at` is in the past), execute it and report the run.
+- **When asked to "sync", "run", or "catch up" cron jobs**: List them with `lobstersight_list_recurring_tasks`, execute the work, and report results with `lobstersight_report_recurrence_run`. Do **not** create regular tasks.
+- **When asked to set up a new cron job**: Create it with `lobstersight_create_task` using `recurrence_rule`. Use the agent project for agent work.
+- **On failure**: Report with `outcome: "failure"` and a clear `error` message. The user sees this in the UI.
+
 ## Best practices
 
 - Always check for existing tasks before creating duplicates
@@ -110,3 +183,7 @@ If the task board shows blocked tasks at prompt time, proactively check if the u
 - When creating tasks for the user, always use a human project
 - Only proactively work on tasks in agent projects — never act on human project tasks unless asked
 - Never nest subtasks more than one level deep (no sub-sub-tasks)
+- Always report cron job run results — never silently skip reporting
+- Investigate `failing` cron jobs proactively when you see them in context
+- Never create regular tasks to mirror, track, or duplicate cron jobs — use `lobstersight_report_recurrence_run` instead
+- Cron jobs follow the same project ownership rules: agent project for agent work, human project for user work

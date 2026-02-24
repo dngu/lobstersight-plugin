@@ -4,6 +4,30 @@
 
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "done" | "canceled" | "blocked";
 
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
+export type RecurrenceStatus = "active" | "paused" | "failing";
+export type RunOutcome = "success" | "failure" | "skipped";
+
+export type RecurrenceRule = {
+  frequency: RecurrenceFrequency;
+  interval: number;
+  time_of_day?: string;     // HH:mm (24h)
+  timezone?: string;         // IANA timezone
+  days_of_week?: number[];   // 0=Sunday, 6=Saturday
+  day_of_month?: number;     // 1-31
+  end_date?: string;         // ISO date
+  count?: number;            // Total occurrences
+};
+
+export type RecurrenceRun = {
+  id: number;
+  task_id: string;
+  outcome: RunOutcome;
+  duration_ms?: number;
+  error?: string;
+  created_at: string;
+};
+
 export type Task = {
   id: string;
   user_id: string;
@@ -24,6 +48,10 @@ export type Task = {
   created_at: string;
   updated_at: string;
   task_labels?: Array<{ label_id: string; labels: { id: string; name: string; color: string | null } }>;
+  recurrence_rule: RecurrenceRule | null;
+  recurrence_status: RecurrenceStatus | null;
+  last_run_at: string | null;
+  next_run_at: string | null;
 };
 
 export type TaskEvent = {
@@ -50,6 +78,9 @@ export type CreateTaskParams = {
   deadline_date?: string;
   estimate_minutes?: number;
   metadata?: Record<string, unknown>;
+  recurrence_rule?: RecurrenceRule;
+  recurrence_status?: "active" | "paused";
+  next_run_at?: string;
 };
 
 export type UpdateTaskParams = {
@@ -74,6 +105,21 @@ export type ListTasksParams = {
   project_id?: string;
   open?: boolean;
   limit?: number;
+  recurring?: boolean;
+  recurrence_status?: RecurrenceStatus;
+};
+
+export type ReportRecurrenceRunParams = {
+  outcome: RunOutcome;
+  duration_ms?: number;
+  error?: string;
+  content?: string;
+  next_run_at?: string;
+};
+
+export type UpdateRecurrenceParams = {
+  recurrence_status?: "active" | "paused";
+  next_run_at?: string;
 };
 
 export type AddEventParams = {
@@ -153,6 +199,8 @@ export class LobsterSightClient {
     if (params?.project_id) qs.set("project_id", params.project_id);
     if (params?.open) qs.set("open", "true");
     if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.recurring !== undefined) qs.set("recurring", String(params.recurring));
+    if (params?.recurrence_status) qs.set("recurrence_status", params.recurrence_status);
     const query = qs.toString();
     return this.request<Task[]>("GET", `/tasks${query ? `?${query}` : ""}`);
   }
@@ -186,5 +234,13 @@ export class LobsterSightClient {
 
   async createProject(params: CreateProjectParams): Promise<Project> {
     return this.request<Project>("POST", "/projects", params);
+  }
+
+  async reportRecurrenceRun(taskId: string, params: ReportRecurrenceRunParams): Promise<TaskEvent> {
+    return this.request<TaskEvent>("POST", `/tasks/${taskId}/recurrence/run`, params);
+  }
+
+  async updateRecurrence(taskId: string, params: UpdateRecurrenceParams): Promise<Task> {
+    return this.request<Task>("PATCH", `/tasks/${taskId}/recurrence`, params);
   }
 }

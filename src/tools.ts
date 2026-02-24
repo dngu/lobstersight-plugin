@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import type { LobsterSightClient } from "./client.js";
+import type { LobsterSightClient, RecurrenceRule } from "./client.js";
 
 const PRIORITY_LABELS: Record<number, string> = {
   0: "None",
@@ -17,6 +17,33 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: "Canceled",
   blocked: "Blocked",
 };
+
+const RECURRENCE_STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  paused: "Paused",
+  failing: "Failing",
+};
+
+function formatRecurrenceSummary(rule: RecurrenceRule): string {
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  let summary = rule.interval === 1
+    ? rule.frequency.charAt(0).toUpperCase() + rule.frequency.slice(1)
+    : `Every ${rule.interval} ${rule.frequency.replace(/ly$/, "")}${rule.interval > 1 ? "s" : ""}`;
+
+  if (rule.days_of_week?.length) {
+    summary += ` on ${rule.days_of_week.map((d) => DAY_NAMES[d]).join(", ")}`;
+  }
+  if (rule.day_of_month) {
+    summary += ` on day ${rule.day_of_month}`;
+  }
+  if (rule.time_of_day) {
+    summary += ` at ${rule.time_of_day}`;
+  }
+  if (rule.timezone) {
+    summary += ` (${rule.timezone})`;
+  }
+  return summary;
+}
 
 function formatTask(t: { id: string; title: string; status: string; priority: number; description?: string | null; project_id?: string | null; due_date?: string | null; created_at: string }): string {
   const parts = [
@@ -106,6 +133,12 @@ export function createGetTaskTool(client: LobsterSightClient) {
         const labels = task.task_labels.map((tl) => tl.labels.name).join(", ");
         parts.push(`Labels: ${labels}`);
       }
+      if (task.recurrence_rule) {
+        parts.push(`Cron Schedule: ${formatRecurrenceSummary(task.recurrence_rule)}`);
+        parts.push(`Cron Status: ${RECURRENCE_STATUS_LABELS[task.recurrence_status!] ?? task.recurrence_status}`);
+        if (task.last_run_at) parts.push(`Last Run: ${task.last_run_at}`);
+        if (task.next_run_at) parts.push(`Next Run: ${task.next_run_at}`);
+      }
       if (task.metadata && Object.keys(task.metadata).length > 0) {
         parts.push(`Metadata: ${JSON.stringify(task.metadata)}`);
       }
@@ -122,7 +155,7 @@ export function createCreateTaskTool(client: LobsterSightClient) {
     name: "lobstersight_create_task",
     label: "LobsterSight: Create Task",
     description:
-      "Create a new task in LobsterSight. Specify a title and optionally a description, status, priority, project, due date, and time estimate.",
+      "Create a new task in LobsterSight. Specify a title and optionally a description, status, priority, project, due date, and time estimate. Include a recurrence_rule to create a cron job instead of a one-off task.",
     parameters: Type.Object({
       title: Type.String({ description: "Task title (required)" }),
       description: Type.Optional(Type.String({ description: "Detailed description of the task" })),
@@ -144,6 +177,24 @@ export function createCreateTaskTool(client: LobsterSightClient) {
       due_date: Type.Optional(Type.String({ description: "Due date (YYYY-MM-DD)" })),
       estimate_minutes: Type.Optional(Type.Number({ description: "Estimated time in minutes", minimum: 0 })),
       metadata: Type.Optional(Type.Unknown({ description: "Arbitrary key-value metadata" })),
+      recurrence_rule: Type.Optional(
+        Type.Object({
+          frequency: Type.Union([
+            Type.Literal("daily"),
+            Type.Literal("weekly"),
+            Type.Literal("monthly"),
+            Type.Literal("yearly"),
+          ], { description: "How often the task repeats" }),
+          interval: Type.Number({ description: "Repeat every N periods (e.g. 2 = every 2 weeks)", minimum: 1 }),
+          time_of_day: Type.Optional(Type.String({ description: "Time of day in HH:mm 24h format (e.g. '09:00')" })),
+          timezone: Type.Optional(Type.String({ description: "IANA timezone (e.g. 'America/New_York')" })),
+          days_of_week: Type.Optional(Type.Array(Type.Number({ minimum: 0, maximum: 6 }), { description: "Days of week: 0=Sun, 1=Mon, ..., 6=Sat" })),
+          day_of_month: Type.Optional(Type.Number({ description: "Day of the month (1-31)", minimum: 1, maximum: 31 })),
+          end_date: Type.Optional(Type.String({ description: "ISO date when recurrence stops" })),
+          count: Type.Optional(Type.Number({ description: "Total number of occurrences before stopping", minimum: 1 })),
+        }, { description: "Cron schedule. Include this to make the task a cron job." }),
+      ),
+      next_run_at: Type.Optional(Type.String({ description: "ISO timestamp for the first/next scheduled run" })),
     }),
     async execute(_id: string, params: Record<string, unknown>) {
       const title = params.title as string;
@@ -159,17 +210,24 @@ export function createCreateTaskTool(client: LobsterSightClient) {
         due_date: params.due_date as string | undefined,
         estimate_minutes: params.estimate_minutes as number | undefined,
         metadata: params.metadata as Record<string, unknown> | undefined,
+        recurrence_rule: params.recurrence_rule as RecurrenceRule | undefined,
+        next_run_at: params.next_run_at as string | undefined,
       });
 
-      return text(
-        [
-          `Task created successfully.`,
-          `ID: ${task.id}`,
-          `Title: ${task.title}`,
-          `Status: ${STATUS_LABELS[task.status] ?? task.status}`,
-          `Priority: ${PRIORITY_LABELS[task.priority] ?? task.priority}`,
-        ].join("\n"),
-      );
+      const parts = [
+        `Task created successfully.`,
+        `ID: ${task.id}`,
+        `Title: ${task.title}`,
+        `Status: ${STATUS_LABELS[task.status] ?? task.status}`,
+        `Priority: ${PRIORITY_LABELS[task.priority] ?? task.priority}`,
+      ];
+      if (task.recurrence_rule) {
+        parts.push(`Cron Schedule: ${formatRecurrenceSummary(task.recurrence_rule)}`);
+        parts.push(`Cron Status: ${RECURRENCE_STATUS_LABELS[task.recurrence_status!] ?? task.recurrence_status}`);
+        if (task.next_run_at) parts.push(`Next Run: ${task.next_run_at}`);
+      }
+
+      return text(parts.join("\n"));
     },
   };
 }
@@ -344,6 +402,141 @@ export function createCreateProjectTool(client: LobsterSightClient) {
           .filter(Boolean)
           .join("\n"),
       );
+    },
+  };
+}
+
+export function createListRecurringTasksTool(client: LobsterSightClient) {
+  return {
+    name: "lobstersight_list_recurring_tasks",
+    label: "LobsterSight: List Cron Jobs",
+    description:
+      "List cron jobs (recurring scheduled tasks) from LobsterSight. Filter by project or status (active, paused, failing). Shows schedule, last/next run times, and current status.",
+    parameters: Type.Object({
+      project_id: Type.Optional(Type.String({ description: "Filter by project UUID" })),
+      recurrence_status: Type.Optional(
+        Type.Union([
+          Type.Literal("active"),
+          Type.Literal("paused"),
+          Type.Literal("failing"),
+        ], { description: "Filter by recurrence status" }),
+      ),
+      limit: Type.Optional(Type.Number({ description: "Maximum number of tasks to return", minimum: 1, maximum: 100 })),
+    }),
+    async execute(_id: string, params: Record<string, unknown>) {
+      const tasks = await client.listTasks({
+        recurring: true,
+        project_id: params.project_id as string | undefined,
+        recurrence_status: params.recurrence_status as "active" | "paused" | "failing" | undefined,
+        limit: params.limit as number | undefined,
+      });
+
+      if (tasks.length === 0) {
+        return text("No cron jobs found matching the filters.");
+      }
+
+      const lines = [`Found ${tasks.length} cron job(s):`, ""];
+      for (const t of tasks) {
+        const status = RECURRENCE_STATUS_LABELS[t.recurrence_status!] ?? t.recurrence_status;
+        const schedule = t.recurrence_rule ? formatRecurrenceSummary(t.recurrence_rule) : "Unknown";
+        lines.push(`[${t.id}] ${t.title}`);
+        lines.push(`  Schedule: ${schedule} | Status: ${status}`);
+        if (t.last_run_at) lines.push(`  Last Run: ${t.last_run_at}`);
+        if (t.next_run_at) lines.push(`  Next Run: ${t.next_run_at}`);
+        if (t.project_id) lines.push(`  Project: ${t.project_id}`);
+        lines.push("");
+      }
+      return text(lines.join("\n"));
+    },
+  };
+}
+
+export function createReportRecurrenceRunTool(client: LobsterSightClient) {
+  return {
+    name: "lobstersight_report_recurrence_run",
+    label: "LobsterSight: Report Cron Run",
+    description:
+      "Report the result of executing a cron job. Records the outcome (success, failure, or skipped), duration, and any error message. Updates the job's last_run_at and status automatically.",
+    parameters: Type.Object({
+      task_id: Type.String({ description: "The UUID of the cron job" }),
+      outcome: Type.Union([
+        Type.Literal("success"),
+        Type.Literal("failure"),
+        Type.Literal("skipped"),
+      ], { description: "Result of the run: success, failure, or skipped" }),
+      duration_ms: Type.Optional(Type.Number({ description: "Execution time in milliseconds", minimum: 0 })),
+      error: Type.Optional(Type.String({ description: "Error message if outcome is failure" })),
+      content: Type.Optional(Type.String({ description: "Notes or summary of what happened during the run" })),
+      next_run_at: Type.Optional(Type.String({ description: "ISO timestamp to set as the next scheduled run" })),
+    }),
+    async execute(_id: string, params: Record<string, unknown>) {
+      const taskId = params.task_id as string;
+      if (!taskId) throw new Error("task_id is required");
+
+      const outcome = params.outcome as string;
+      if (!outcome) throw new Error("outcome is required");
+
+      const event = await client.reportRecurrenceRun(taskId, {
+        outcome: outcome as "success" | "failure" | "skipped",
+        duration_ms: params.duration_ms as number | undefined,
+        error: params.error as string | undefined,
+        content: params.content as string | undefined,
+        next_run_at: params.next_run_at as string | undefined,
+      });
+
+      const parts = [
+        `Cron run reported for job ${taskId}.`,
+        `Outcome: ${outcome}`,
+      ];
+      if (params.duration_ms) parts.push(`Duration: ${(params.duration_ms as number / 1000).toFixed(1)}s`);
+      if (params.error) parts.push(`Error: ${params.error}`);
+      if (params.content) parts.push(`Notes: ${params.content}`);
+      if (params.next_run_at) parts.push(`Next Run: ${params.next_run_at}`);
+      parts.push(`Event ID: ${event.id}`);
+
+      return text(parts.join("\n"));
+    },
+  };
+}
+
+export function createUpdateRecurrenceTool(client: LobsterSightClient) {
+  return {
+    name: "lobstersight_update_recurrence",
+    label: "LobsterSight: Update Cron Job",
+    description:
+      "Pause or resume a cron job's schedule, or update its next run time. Use this to temporarily stop a cron job or adjust when it runs next.",
+    parameters: Type.Object({
+      task_id: Type.String({ description: "The UUID of the cron job" }),
+      recurrence_status: Type.Optional(
+        Type.Union([Type.Literal("active"), Type.Literal("paused")], {
+          description: "Set to 'paused' to stop the schedule, 'active' to resume it",
+        }),
+      ),
+      next_run_at: Type.Optional(Type.String({ description: "ISO timestamp to set as the next scheduled run" })),
+    }),
+    async execute(_id: string, params: Record<string, unknown>) {
+      const taskId = params.task_id as string;
+      if (!taskId) throw new Error("task_id is required");
+
+      const update: Record<string, unknown> = {};
+      if (params.recurrence_status !== undefined) update.recurrence_status = params.recurrence_status;
+      if (params.next_run_at !== undefined) update.next_run_at = params.next_run_at;
+
+      if (Object.keys(update).length === 0) {
+        return text("No fields to update. Provide recurrence_status or next_run_at.");
+      }
+
+      const task = await client.updateRecurrence(taskId, update);
+
+      const status = RECURRENCE_STATUS_LABELS[task.recurrence_status!] ?? task.recurrence_status;
+      const parts = [
+        `Cron job updated: ${task.id}`,
+        `Title: ${task.title}`,
+        `Status: ${status}`,
+      ];
+      if (task.next_run_at) parts.push(`Next Run: ${task.next_run_at}`);
+
+      return text(parts.join("\n"));
     },
   };
 }
