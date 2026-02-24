@@ -83,12 +83,15 @@ export function createListTasksTool(client: LobsterSightClient) {
       limit: Type.Optional(Type.Number({ description: "Maximum number of tasks to return", minimum: 1, maximum: 100 })),
     }),
     async execute(_id: string, params: Record<string, unknown>) {
-      const tasks = await client.listTasks({
+      const allTasks = await client.listTasks({
         status: params.status as string | undefined,
         project_id: params.project_id as string | undefined,
         open: params.open as boolean | undefined,
         limit: params.limit as number | undefined,
       });
+
+      // Exclude recurring tasks — those have their own list tool
+      const tasks = allTasks.filter((t) => !t.recurrence_rule);
 
       if (tasks.length === 0) {
         return text("No tasks found matching the filters.");
@@ -252,6 +255,7 @@ export function createCreateRecurringTaskTool(client: LobsterSightClient) {
         project_id: params.project_id as string | undefined,
         metadata: params.metadata as Record<string, unknown> | undefined,
         recurrence_rule: recurrenceRule,
+        recurrence_status: "active",
         next_run_at: params.next_run_at as string | undefined,
       });
 
